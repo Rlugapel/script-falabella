@@ -271,9 +271,63 @@ for O in "${ORGS[@]}"; do
     EST_JSON=$?
 
     if [ "$EST_TXT" -ne 0 ] && [ "$EST_JSON" -ne 0 ]; then
-      echo "FALLO"
-      FALLARON+=("$NUM ($O)")
+      # El lote fallo. Basta que UN repo de la lista no exista (archivado,
+      # renombrado, borrado, o sin permiso) para que el CLI aborte la corrida
+      # entera y se pierdan los otros 49. Por eso, en vez de descartar el lote,
+      # se reintenta repo por repo: los que andan se guardan igual y los que
+      # fallan quedan aislados en _fallidos.txt con su motivo.
+      echo "FALLO - reintentando de a uno"
       rm -f "$ARCHIVO_JSON"
+
+      SUB=0
+      RESCATADOS=0
+      for R in "${PARTE[@]}"; do
+        SUB=$(( SUB + 1 ))
+        SUB_PAD=$(printf "%03d" "$SUB")
+        S_JSON="$SALIDA/lote-${NUM_PAD}-r${SUB_PAD}.json"
+        S_TXT="$SALIDA/lote-${NUM_PAD}-r${SUB_PAD}.txt"
+        S_REPOS="$SALIDA/lote-${NUM_PAD}-r${SUB_PAD}.repos.txt"
+
+        [ -s "$S_JSON" ] && { RESCATADOS=$(( RESCATADOS + 1 )); continue; }
+
+        echo "$O/$R" > "$S_REPOS"
+
+        UNO=(utils contributor-count github
+             --orgs "$O" --repos "$R" --token "$TOKEN"
+             --debug --timeout 3600)
+        [ -n "$GH_URL" ] && UNO+=(--url "$GH_URL")
+
+        "$CX_BIN" "${UNO[@]}" > "$S_TXT" 2>&1
+        E_TXT=$?
+        "$CX_BIN" "${UNO[@]}" --format json > "$S_JSON" 2>/dev/null
+        E_JSON=$?
+
+        if [ "$E_TXT" -ne 0 ] && [ "$E_JSON" -ne 0 ]; then
+          # Motivo, sacado del propio log del CLI
+          MOTIVO="error desconocido"
+          if grep -q '"status":"404"' "$S_TXT" 2>/dev/null; then
+            MOTIVO="404 - no existe, fue renombrado, o el token no lo ve"
+          elif grep -qi 'saml\|single sign\|sso' "$S_TXT" 2>/dev/null; then
+            MOTIVO="SSO - el token no esta autorizado para esta organizacion"
+          elif grep -q '"status":"401"' "$S_TXT" 2>/dev/null; then
+            MOTIVO="401 - token invalido o vencido"
+          elif grep -qi 'rate limit\|"status":"403"' "$S_TXT" 2>/dev/null; then
+            MOTIVO="403 - rate limit o sin permiso"
+          fi
+          printf '%s/%s\t%s\n' "$O" "$R" "$MOTIVO" >> "$SALIDA/_fallidos.txt"
+          rm -f "$S_JSON" "$S_REPOS"
+        else
+          RESCATADOS=$(( RESCATADOS + 1 ))
+        fi
+      done
+
+      PERDIDOS=$(( ${#PARTE[@]} - RESCATADOS ))
+      echo "          rescatados $RESCATADOS de ${#PARTE[@]}, fallaron $PERDIDOS"
+      if [ "$RESCATADOS" -gt 0 ]; then
+        HECHOS=$(( HECHOS + 1 ))
+      else
+        FALLARON+=("$NUM ($O)")
+      fi
     else
       echo "ok"
       HECHOS=$(( HECHOS + 1 ))
@@ -289,7 +343,24 @@ echo
 echo " Organizaciones:   ${#ORGS[@]}"
 echo " Lotes ejecutados: $HECHOS"
 echo " Lotes salteados:  $SALTEADOS (ya estaban)"
-echo " Lotes fallados:   ${#FALLARON[@]}"
+echo " Lotes perdidos:   ${#FALLARON[@]} (ni un repo se pudo medir)"
+
+if [ -s "$SALIDA/_fallidos.txt" ]; then
+  CANT_FALL=$(wc -l < "$SALIDA/_fallidos.txt" | tr -d ' ')
+  echo
+  echo " REPOSITORIOS QUE NO SE PUDIERON MEDIR: $CANT_FALL"
+  echo " La lista completa, con el motivo de cada uno, esta en:"
+  echo "   $SALIDA/_fallidos.txt"
+  echo
+  echo " Resumen por motivo:"
+  cut -f2 "$SALIDA/_fallidos.txt" | sort | uniq -c | sort -rn \
+    | while read -r C M; do printf "   %5d  %s\n" "$C" "$M"; done
+  echo
+  echo " El resto SI se midio. Estos repos quedan afuera del total, asi que"
+  echo " el numero final es sobre los repositorios que si respondieron."
+  echo " Conviene revisar la lista con el cliente antes de dar el numero:"
+  echo " un 404 suele ser un repo archivado o renombrado."
+fi
 
 if [ ${#FALLARON[@]} -gt 0 ]; then
   echo
