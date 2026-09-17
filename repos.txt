@@ -1,0 +1,21 @@
+# Lista de repositorios a contabilizar.
+#
+# Formato: acepta las dos formas, y se pueden mezclar.
+#   - Separados por coma, todos en una linea.
+#   - Uno por renglon.
+#
+# Reglas:
+#   - Solo el NOMBRE del repo. Sin la organizacion adelante, sin .git al final.
+#   - Las lineas que empiezan con # se ignoran.
+#   - Las lineas vacias se ignoran.
+#   - Los espacios sobrantes se limpian solos.
+#
+# Ejemplo:
+#   app-checkout,api-pagos,web-tienda
+# o bien:
+#   app-checkout
+#   api-pagos
+#   web-tienda
+#
+# Borrar estas lineas de ejemplo y poner los repos reales debajo.
+

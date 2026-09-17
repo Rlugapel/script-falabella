@@ -1,0 +1,134 @@
+===============================================================================
+CHECKMARX ONE - CALCULO DE CONTRIBUYENTES
+Instrucciones de uso
+===============================================================================
+
+QUE ES ESTO
+
+  Un script que cuenta los desarrolladores unicos que aportaron codigo a sus
+  repositorios de GitHub en los ultimos 90 dias.
+
+  Ese numero es el insumo para dimensionar la licencia de Checkmarx.
+
+
+QUE HACE Y QUE NO HACE
+
+  - NO se conecta al ambiente de Checkmarx. No pide ni usa credenciales de
+    la plataforma.
+  - SI necesita un token de lectura de GitHub, que generan ustedes.
+  - Es de SOLO LECTURA: recorre los commits y cuenta autores.
+    No modifica ningun repositorio.
+  - El token se pide de forma oculta al ejecutar y NO queda guardado en
+    ningun archivo.
+
+
+ANTES DE EMPEZAR: GENERAR EL TOKEN
+
+  En GitHub:
+    1. Foto de perfil > Settings
+    2. Developer settings > Personal access tokens > Tokens (classic)
+    3. Generate new token
+    4. Marcar el scope:  repo
+    5. Generar y copiar el token. Se muestra una sola vez.
+
+  IMPORTANTE - SI LA ORGANIZACION TIENE SSO:
+    Despues de crear el token hay que AUTORIZARLO para la organizacion.
+    En la lista de tokens aparece un boton "Configure SSO" o "Authorize"
+    al lado del token.
+
+    Sin ese paso el token se crea bien pero el script falla igual.
+    Es el error mas comun.
+
+
+COMO EJECUTARLO
+
+  WINDOWS
+    1. Abrir PowerShell en esta carpeta.
+    2. Ejecutar:
+
+         Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+         .\contributor-count.ps1
+
+  MAC / LINUX
+    1. Abrir la terminal en esta carpeta.
+    2. Ejecutar:
+
+         chmod +x contributor-count.sh
+         ./contributor-count.sh
+
+
+QUE LES VA A PREGUNTAR
+
+  1. ORGANIZACION
+     El nombre tal cual aparece en GitHub.
+     Sale de la URL:   github.com/ESTO-DE-ACA/nombre-del-repo
+
+  2. REPOSITORIOS
+     Los que quieran incluir, separados por coma y SIN espacios.
+     Solo el nombre del repo, sin la organizacion adelante.
+
+       Ejemplo correcto:    app-checkout,api-pagos,web-tienda
+       Ejemplo incorrecto:  falabella/app-checkout, falabella/api-pagos
+
+     Si lo dejan vacio, cuenta la organizacion completa.
+
+  3. TOKEN
+     El que generaron arriba. No se muestra en pantalla al escribirlo.
+
+  4. URL (opcional)
+     Solo si tienen un GitHub Enterprise Server propio en vez de github.com.
+     Si usan github.com, dejarlo vacio.
+
+
+SI FALLA LA DESCARGA DEL CLI
+
+  Algunas redes corporativas bloquean las descargas desde la linea de
+  comandos. En ese caso:
+
+    1. Bajar a mano desde https://github.com/Checkmarx/ast-cli/releases
+       - Windows:  ast-cli_<version>_windows_x64.zip
+       - Mac:      ast-cli_<version>_darwin_universal.tar.gz
+       - Linux:    ast-cli_<version>_linux_x64.tar.gz
+
+    2. Descomprimirlo y dejar el binario (cx o cx.exe) en esta misma
+       carpeta, junto al script.
+
+    3. Volver a ejecutar el script. Va a usar ese binario.
+
+
+COMO LEER EL RESULTADO
+
+  Genera dos archivos en esta carpeta, con la fecha y hora en el nombre:
+  uno .txt con lo que se ve en pantalla y uno .json para procesar.
+
+  La salida tiene dos tablas:
+    - La primera: cantidad de contribuyentes por repositorio.
+    - La segunda: quien es cada contribuyente y a que repos aporto.
+
+  TRES COSAS PARA TENER EN CUENTA
+
+  1. EL TOTAL NO ES LA SUMA DE LAS FILAS.
+     Quien contribuye a varios repositorios se cuenta UNA sola vez en el
+     total. Por eso el total siempre da menor que la suma de la columna.
+
+  2. EL IDENTIFICADOR UNICO ES EL MAIL DEL COMMIT.
+     La misma persona configurada con dos mails distintos aparece como dos
+     contribuyentes. Conviene revisar la segunda tabla buscando duplicados.
+
+  3. DEPENDABOT NO SE CUENTA, PERO OTROS BOTS SI.
+     Si tienen bots de CI que commitean con mail propio, pueden estar
+     sumando al total.
+
+  La ventana de 90 dias es fija y no se puede cambiar.
+
+
+DOCUMENTACION OFICIAL
+
+  https://docs.checkmarx.com/en/34965-68653-utils.html
+
+
+CONSULTAS
+
+  Santiago Rullan - srullan@lugapel.com
+
+===============================================================================
