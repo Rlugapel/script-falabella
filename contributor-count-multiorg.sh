@@ -316,12 +316,15 @@ for O in "${ORGS[@]}"; do
           fi
           printf '%s/%s\t%s\n' "$O" "$R" "$MOTIVO" >> "$SALIDA/_fallidos.txt"
           rm -f "$S_JSON" "$S_REPOS"
+          echo "          FALLO  $O/$R  ->  $MOTIVO"
         else
           RESCATADOS=$(( RESCATADOS + 1 ))
+          printf "\r          reintento %d/%d" "$SUB" "${#PARTE[@]}"
         fi
       done
 
       PERDIDOS=$(( ${#PARTE[@]} - RESCATADOS ))
+      echo
       echo "          rescatados $RESCATADOS de ${#PARTE[@]}, fallaron $PERDIDOS"
       if [ "$RESCATADOS" -gt 0 ]; then
         HECHOS=$(( HECHOS + 1 ))
@@ -351,6 +354,11 @@ if [ -s "$SALIDA/_fallidos.txt" ]; then
   echo " REPOSITORIOS QUE NO SE PUDIERON MEDIR: $CANT_FALL"
   echo " La lista completa, con el motivo de cada uno, esta en:"
   echo "   $SALIDA/_fallidos.txt"
+  echo
+  echo " Repositorios fallidos:"
+  sort -u "$SALIDA/_fallidos.txt" | while IFS=$'\t' read -r R M; do
+    printf "   %-60s %s\n" "$R" "$M"
+  done
   echo
   echo " Resumen por motivo:"
   cut -f2 "$SALIDA/_fallidos.txt" | sort | uniq -c | sort -rn \

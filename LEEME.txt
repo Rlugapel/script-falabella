@@ -122,6 +122,38 @@ COMO LEER EL RESULTADO
   La ventana de 90 dias es fija y no se puede cambiar.
 
 
+VER QUE REPOSITORIOS FALLARON (script de varias organizaciones)
+
+  Si un lote falla, contributor-count-multiorg.sh reintenta repo por repo:
+  los que responden se miden igual y los que no quedan anotados, con el
+  motivo, en:
+
+       lotes-multiorg/_fallidos.txt
+
+  Para ver el resumen y la lista completa de fallidos SIN volver a correr
+  nada contra GitHub, en la misma carpeta del script:
+
+       chmod +x listar-fallidos.sh
+       ./listar-fallidos.sh
+
+  Muestra cada repositorio que no se pudo medir y por que, y lo guarda en
+  lotes-multiorg/_fallidos-reconstruido.txt. Sirve aunque la corrida se
+  haya cortado y reanudado.
+
+  COMO LEER EL MOTIVO
+    404  El repo no existe, fue archivado o renombrado, o el token no lo
+         ve. Si no tuvo commits en los ultimos 90 dias, no suma
+         contribuyentes y se puede ignorar.
+    SSO  El token no esta autorizado para esa organizacion. Autorizarlo en
+         GitHub y volver a correr contributor-count-multiorg.sh: es
+         reanudable y solo reintenta lo que falta.
+    401  Token invalido o vencido.
+    403  Rate limit o falta de permiso. Esperar y volver a correr.
+
+  Cada repositorio fallido es uno que quedo AFUERA del conteo. Revisar la
+  lista antes de dar el total por bueno.
+
+
 DOCUMENTACION OFICIAL
 
   https://docs.checkmarx.com/en/34965-68653-utils.html
